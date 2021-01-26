@@ -65,26 +65,29 @@ func (s ImageStream) WriteTo(w io.Writer) (int64, error) {
 		}
 		bevyReader := bytes.NewReader(bevy)
 
+		next := uint64(0)
 		for _, bevyIndex := range s.bevyIndexes {
 			for _, bevyIndexEntry := range bevyIndex {
+				if bevyIndexEntry.BevyOffset != next {
+					panic("unorded")
+				}
+				next += uint64(bevyIndexEntry.ChunkSize)
+
 				_, err := bevyReader.Seek(int64(bevyIndexEntry.BevyOffset), io.SeekStart)
 				if err != nil {
 					return 0, err
 				}
 				compressedChunk := make([]byte, bevyIndexEntry.ChunkSize)
-				read, err := bevyReader.Read(compressedChunk)
+				_, err = bevyReader.Read(compressedChunk)
 				if err != nil {
 					return 0, err
 				}
 				var chunk []byte
-				if int(bevyIndexEntry.ChunkSize) == read {
+
+				chunk, err = snappy.Decode(nil, compressedChunk)
+				if err != nil {
+					// TODO remove trial an error decode
 					chunk = compressedChunk
-				} else {
-					chunk, err = snappy.Decode(nil, compressedChunk)
-					if err != nil {
-						return 0, err
-					}
-					fmt.Println("decode done")
 				}
 
 				n, err := w.Write(chunk)

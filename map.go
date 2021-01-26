@@ -19,8 +19,6 @@ type Map struct {
 }
 
 func (m *Map) WriteTo(w io.Writer) (n int64, err error) {
-	// fmt.Println(entry.MappedOffset, entry.Length, entry.TargetID, entry.TargetOffset) TODO
-
 	next := uint64(0)
 	for _, entry := range m.entries {
 		if entry.MappedOffset != next {
