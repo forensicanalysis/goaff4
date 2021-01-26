@@ -1,0 +1,4 @@
+github.com/golang/snappy v0.0.2 h1:aeE13tS0IiQgFjYdoL8qN3K1N2bXXtI6Vi51/y7BpMw=
+github.com/golang/snappy v0.0.2/go.mod h1:/XxbfmMg8lxefKM7IXC3fBNl/7bRcc72aCRzEWrmP2Q=
+github.com/knakk/rdf v0.0.0-20190304171630-8521bf4c5042 h1:Vzdm5hdlLdpJOKK+hKtkV5u7xGZmNW6aUBjGcTfwx84=
+github.com/knakk/rdf v0.0.0-20190304171630-8521bf4c5042/go.mod h1:fYE0718xXI13XMYLc6iHtvXudfyCGMsZ9hxSM1Ommpg=
