@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"encoding/binary"
+	"fmt"
 	"io"
 	"io/fs"
 	"net/url"
@@ -11,7 +13,7 @@ import (
 
 type Map struct {
 	urn              *url.URL
-	dependentStreams []*ImageStream
+	dependentStreams map[string]*ImageStream
 	entries          []mapEntry
 	targets          []string
 }
@@ -19,13 +21,57 @@ type Map struct {
 func (m *Map) WriteTo(w io.Writer) (n int64, err error) {
 	// fmt.Println(entry.MappedOffset, entry.Length, entry.TargetID, entry.TargetOffset) TODO
 
-	for _, s := range m.dependentStreams {
-		c, err := s.WriteTo(w)
-		if err != nil {
-			return 0, err
+	next := uint64(0)
+	for _, entry := range m.entries {
+		if entry.MappedOffset != next {
+			panic("unorded")
 		}
-		n += c
+
+		c := 0
+		target := m.targets[entry.TargetID]
+		switch {
+		case target == "http://aff4.org/Schema#Zero":
+			c, err = w.Write(bytes.Repeat([]byte{0x00}, int(entry.Length)))
+			if err != nil {
+				return 0, err
+			}
+		case strings.HasPrefix(target, "http://aff4.org/Schema#SymbolicStream61"):
+			c, err = w.Write(bytes.Repeat([]byte{0x61}, int(entry.Length)))
+			if err != nil {
+				return 0, err
+			}
+		case strings.HasPrefix(target, "http://aff4.org/Schema#SymbolicStreamFF"):
+			c, err = w.Write(bytes.Repeat([]byte{0xFF}, int(entry.Length)))
+			if err != nil {
+				return 0, err
+			}
+		default:
+			if is, ok := m.dependentStreams[target]; ok {
+				buf := &bytes.Buffer{}
+				_, err = is.WriteTo(buf)
+				if err != nil {
+					return 0, err
+				}
+				x := buf.Next(int(entry.TargetOffset))
+				if uint64(len(x)) != entry.TargetOffset {
+					// log.Fatal("insuff skip ", c, entry.TargetOffset)
+				}
+				c, err = w.Write(buf.Next(int(entry.Length)))
+				if err != nil {
+					return 0, err
+				}
+				if uint64(c) != entry.Length {
+					// log.Fatal("insuff read ", c, entry.Length)
+				}
+			} else {
+				return 0, fmt.Errorf("unknown target %s", target)
+			}
+		}
+
+		next = entry.MappedOffset + entry.Length
+		n += int64(c)
 	}
+
 	return n, nil
 }
 
@@ -52,14 +98,14 @@ func newMap(fsys fs.FS, objects map[string]parsedObject, mapURI string) (*Map, e
 		return nil, err
 	}
 
-	var imageStreams []*ImageStream
+	imageStreams := map[string]*ImageStream{}
 	for _, dependentStreamURI := range objects[mapURI].metadata["dependentStream"] {
 		imageStream, err := newImageStream(fsys, objects, dependentStreamURI)
 		if err != nil {
 			return nil, err
 		}
 
-		imageStreams = append(imageStreams, imageStream)
+		imageStreams[dependentStreamURI] = imageStream
 	}
 	return &Map{
 		urn:              mapURL,
