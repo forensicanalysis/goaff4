@@ -1,4 +1,4 @@
-package main
+package goaff4
 
 import (
 	"bytes"
@@ -11,6 +11,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/golang/snappy"
 )
@@ -20,6 +21,7 @@ type ImageStream struct {
 	urn         *url.URL
 	chunkSize   int64
 	bevyIndexes map[string][]bevyIndexEntry
+	size        int64
 }
 
 type bevyIndexEntry struct {
@@ -37,6 +39,11 @@ func newImageStream(fsys fs.FS, objects map[string]parsedObject, parseImageURI s
 		return nil, err
 	}
 
+	size, err := strconv.Atoi(objects[parseImageURI].metadata["size"][0])
+	if err != nil {
+		return nil, err
+	}
+
 	entries, err := newBevy(fsys, parseImageURI)
 	if err != nil {
 		return nil, err
@@ -46,8 +53,28 @@ func newImageStream(fsys fs.FS, objects map[string]parsedObject, parseImageURI s
 		fsys:        fsys,
 		urn:         parseImageURL,
 		chunkSize:   int64(chunkSize),
+		size:        int64(size),
 		bevyIndexes: entries,
 	}, nil
+}
+
+func (s *ImageStream) Read(p []byte) (int, error) {
+	b := &bytes.Buffer{}
+	_, err := s.WriteTo(b)
+	if err != nil {
+		return 0, err
+	}
+
+	x := max(len(p), b.Len())
+	return copy(p, b.Bytes()[:x]), nil
+}
+
+func (s *ImageStream) Stat() (fs.FileInfo, error) {
+	return s, nil
+}
+
+func (s *ImageStream) Close() error {
+	return nil
 }
 
 func (s ImageStream) WriteTo(w io.Writer) (int64, error) {
@@ -142,4 +169,36 @@ func newBevyIndex(fsys fs.FS, parseImageURI string, name string) ([]bevyIndexEnt
 		entries = append(entries, entry)
 	}
 	return entries, nil
+}
+
+func (s *ImageStream) Name() string {
+	return strings.TrimPrefix(s.urn.String(), `aff4://`)
+}
+
+func (s *ImageStream) Size() int64 {
+	return s.size
+}
+
+func (s *ImageStream) Mode() fs.FileMode {
+	return 0
+}
+
+func (s *ImageStream) ModTime() time.Time {
+	return time.Time{}
+}
+
+func (s *ImageStream) IsDir() bool {
+	return false
+}
+
+func (s *ImageStream) Sys() interface{} {
+	return nil
+}
+
+func (s *ImageStream) Type() fs.FileMode {
+	return 0
+}
+
+func (s *ImageStream) Info() (fs.FileInfo, error) {
+	return s, nil
 }
