@@ -1,4 +1,4 @@
-module goaff4
+module github.com/forensicanalysis/goaff4
 
 go 1.16
 

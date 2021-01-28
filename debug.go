@@ -1,4 +1,4 @@
-package main
+package goaff4
 
 import (
 	"archive/zip"
