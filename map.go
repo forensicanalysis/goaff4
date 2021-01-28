@@ -83,16 +83,10 @@ func (m *affMap) WriteTo(w io.Writer) (n int64, err error) {
 				if err != nil {
 					return 0, err
 				}
-				x := buf.Next(int(entry.TargetOffset))
-				if uint64(len(x)) != entry.TargetOffset {
-					// log.Fatal("insuff skip ", c, entry.TargetOffset)
-				}
+				buf.Next(int(entry.TargetOffset))
 				c, err = w.Write(buf.Next(int(entry.Length)))
 				if err != nil {
 					return 0, err
-				}
-				if uint64(c) != entry.Length {
-					// log.Fatal("insuff read ", c, entry.Length)
 				}
 			} else {
 				return 0, fmt.Errorf("unknown target %s", target)

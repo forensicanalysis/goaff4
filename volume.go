@@ -101,7 +101,7 @@ func (p *pseudoRoot) ReadDir(n int) ([]fs.DirEntry, error) {
 			break
 		}
 		entries = append(entries, item)
-		i += 1
+		i++
 	}
 	return entries, nil
 }

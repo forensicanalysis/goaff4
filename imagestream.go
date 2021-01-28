@@ -109,24 +109,30 @@ func (s ImageStream) WriteTo(w io.Writer) (int64, error) {
 				if err != nil {
 					return 0, err
 				}
-				var chunk []byte
-
-				chunk, err = snappy.Decode(nil, compressedChunk)
-				if err != nil {
-					// TODO remove trial an error decode
-					chunk = compressedChunk
-				}
-
-				n, err := w.Write(chunk)
+				n, err := writeChunk(w, compressedChunk)
 				if err != nil {
 					return 0, err
 				}
 				offset += n
 			}
 		}
-		bevyNo += 1
+		bevyNo++
 	}
 	return int64(offset), nil
+}
+
+func writeChunk(w io.Writer, compressedChunk []byte) (int, error) {
+	chunk, err := snappy.Decode(nil, compressedChunk)
+	if err != nil {
+		// TODO remove trial an error decode
+		chunk = compressedChunk
+	}
+
+	n, err := w.Write(chunk)
+	if err != nil {
+		return 0, err
+	}
+	return n, nil
 }
 
 func newBevy(fsys fs.FS, parseImageURI string) (map[string][]bevyIndexEntry, error) {
@@ -143,7 +149,7 @@ func newBevy(fsys fs.FS, parseImageURI string) (map[string][]bevyIndexEntry, err
 			return nil, err
 		}
 		entries[bevyID] = e
-		bevyNo += 1
+		bevyNo++
 	}
 
 	return entries, nil
