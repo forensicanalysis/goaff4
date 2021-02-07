@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -13,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/forensicanalysis/goaff4/batch"
 )
 
 type affMap struct {
@@ -21,24 +22,10 @@ type affMap struct {
 	entries          []mapEntry
 	targets          []string
 	size             int64
-}
 
-func max(x, y int) int {
-	if x > y {
-		return x
-	}
-	return y
-}
-
-func (m *affMap) Read(p []byte) (int, error) {
-	b := &bytes.Buffer{}
-	_, err := m.WriteTo(b)
-	if err != nil {
-		return 0, err
-	}
-
-	x := max(len(p), b.Len())
-	return copy(p, b.Bytes()[:x]), nil
+	next     uint64
+	entryPos int64
+	bcr      *batch.BufferedChunkReader
 }
 
 func (m *affMap) Stat() (fs.FileInfo, error) {
@@ -49,55 +36,73 @@ func (m *affMap) Close() error {
 	return nil
 }
 
-func (m *affMap) WriteTo(w io.Writer) (n int64, err error) {
-	next := uint64(0)
-	for _, entry := range m.entries {
-		if entry.MappedOffset != next {
-			return 0, errors.New("unordered list")
-		}
+func (m *affMap) Read(b []byte) (int, error) {
+	if m.bcr == nil {
+		m.bcr = batch.New(m)
+	}
+	return m.bcr.Read(b)
+}
 
-		c := 0
-		target := m.targets[entry.TargetID]
-		switch {
-		case target == "http://aff4.org/Schema#UnknownData":
-			fallthrough
-		case target == "http://aff4.org/Schema#Zero":
-			c, err = w.Write(bytes.Repeat([]byte{0x00}, int(entry.Length)))
-			if err != nil {
-				return 0, err
-			}
-		case strings.HasPrefix(target, "http://aff4.org/Schema#SymbolicStream"):
-			s := strings.TrimPrefix(target, "http://aff4.org/Schema#SymbolicStream")
-			decoded, err := hex.DecodeString(s)
-			if err != nil {
-				return 0, err
-			}
-			c, err = w.Write(bytes.Repeat(decoded[:1], int(entry.Length)))
-			if err != nil {
-				return 0, err
-			}
-		default:
-			if is, ok := m.dependentStreams[target]; ok {
-				buf := &bytes.Buffer{}
-				_, err = is.WriteTo(buf)
-				if err != nil {
-					return 0, err
-				}
-				buf.Next(int(entry.TargetOffset))
-				c, err = w.Write(buf.Next(int(entry.Length)))
-				if err != nil {
-					return 0, err
-				}
-			} else {
-				return 0, fmt.Errorf("unknown target %s", target)
-			}
-		}
-
-		next = entry.MappedOffset + entry.Length
-		n += int64(c)
+func (m *affMap) GetChunk() ([]byte, error) {
+	if m.entryPos > int64(len(m.entries)) {
+		return nil, io.EOF
 	}
 
-	return n, nil
+	entry := m.entries[m.entryPos]
+
+	if entry.MappedOffset != m.next {
+		return nil, fmt.Errorf("unordered list: %d %d", entry.MappedOffset, m.next)
+	}
+
+	var chunk []byte
+	target := m.targets[entry.TargetID]
+	switch {
+	case target == "http://aff4.org/Schema#UnknownData":
+		fallthrough
+	case target == "http://aff4.org/Schema#Zero":
+		chunk = bytes.Repeat([]byte{0x00}, int(entry.Length))
+	case strings.HasPrefix(target, "http://aff4.org/Schema#SymbolicStream"):
+		s := strings.TrimPrefix(target, "http://aff4.org/Schema#SymbolicStream")
+		decoded, err := hex.DecodeString(s)
+		if err != nil {
+			return nil, err
+		}
+		chunk = bytes.Repeat(decoded[:1], int(entry.Length))
+	default:
+		if is, ok := m.dependentStreams[target]; ok {
+			fmt.Println(target, "all", entry.TargetOffset, entry.Length)
+
+			isChunk := make([]byte, entry.Length)
+			// is.Seek(entry.TargetOffset)
+			c, err := is.Read(isChunk)
+			if err != nil {
+				return nil, err
+			}
+			if uint64(c) != entry.Length {
+				panic("wrong length")
+			}
+
+			chunk = append(chunk, isChunk...)
+
+			//
+			// _, err := is.Read(buf)
+			// if err != nil {
+			// 	return 0, err
+			// }
+			// buf = buf[entry.TargetOffset:]
+			// c, err = m.buf.Write(buf[:entry.Length])
+			// if err != nil {
+			// 	return c, err
+			// }
+		} else {
+			return nil, fmt.Errorf("unknown target %s", target)
+		}
+	}
+
+	m.next = entry.MappedOffset + entry.Length
+	m.entryPos = m.entryPos + 1
+
+	return chunk, nil
 }
 
 type mapEntry struct {

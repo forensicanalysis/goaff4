@@ -2,8 +2,10 @@ package goaff4
 
 import (
 	"fmt"
+	"io"
 	"io/fs"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -13,8 +15,10 @@ type superFile interface {
 }
 
 type volume struct {
-	urn   *url.URL
-	items map[string]superFile
+	urn     *url.URL
+	items   map[string]superFile
+	objects map[string]parsedObject
+	fsys    fs.FS
 }
 
 func newVolume(fsys fs.FS, objects map[string]parsedObject, volumeURI string) (*volume, error) {
@@ -24,8 +28,10 @@ func newVolume(fsys fs.FS, objects map[string]parsedObject, volumeURI string) (*
 	}
 	vo := objects[volumeURI]
 	v := &volume{
-		urn:   volumeURL,
-		items: map[string]superFile{},
+		fsys:    fsys,
+		urn:     volumeURL,
+		items:   map[string]superFile{},
+		objects: objects,
 	}
 	for _, c := range vo.metadata["contains"] {
 		o := objects[c]
@@ -50,6 +56,7 @@ func contains(l []string, s string) bool {
 }
 
 func createItem(fsys fs.FS, objects map[string]parsedObject, c string) (superFile, error) {
+	fmt.Println("create", c)
 	o := objects[c]
 	switch o.metadata["type"][0] {
 	case "Map":
@@ -61,18 +68,22 @@ func createItem(fsys fs.FS, objects map[string]parsedObject, c string) (superFil
 }
 
 func (v *volume) Open(name string) (fs.File, error) {
+	fmt.Println("open", name)
 	if name == "." {
-		return &pseudoRoot{v}, nil
+		return &pseudoRoot{volume: v}, nil
 	}
-	fmt.Println(v.items)
-	if f, ok := v.items[name]; ok {
-		return f, nil
+	name = strings.Replace(name, "aff4%3A%2F%2F", "", 1)
+	if _, ok := v.objects["aff4://"+name]; ok {
+		return createItem(v.fsys, v.objects, "aff4://"+name)
+		// return f, nil
 	}
-	return nil, fs.ErrNotExist
+	fmt.Println(v.objects)
+	return nil, fmt.Errorf("%w: %s", fs.ErrNotExist, name)
 }
 
 type pseudoRoot struct {
-	volume *volume
+	readDirPos int
+	volume     *volume
 }
 
 func (p *pseudoRoot) Name() string { return "." }
@@ -95,13 +106,25 @@ func (p *pseudoRoot) Close() error { return nil }
 
 func (p *pseudoRoot) ReadDir(n int) ([]fs.DirEntry, error) {
 	var entries []fs.DirEntry
-	i := 0
 	for _, item := range p.volume.items {
-		if n != -1 && i > n {
-			break
-		}
 		entries = append(entries, item)
-		i++
 	}
+
+	if p.readDirPos >= len(entries) {
+		if n <= 0 {
+			return nil, nil
+		}
+		return nil, io.EOF
+	}
+
+	if n > 0 && p.readDirPos+n <= len(entries) {
+		entries = entries[p.readDirPos : p.readDirPos+n]
+		p.readDirPos += n
+	} else {
+		entries = entries[p.readDirPos:]
+		p.readDirPos += len(entries)
+	}
+
+	fmt.Println("readdir", entries)
 	return entries, nil
 }
