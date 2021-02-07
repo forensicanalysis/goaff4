@@ -1,11 +1,14 @@
 package goaff4
 
 import (
+	"fmt"
 	"io"
 	"io/fs"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
+	"testing/fstest"
 )
 
 func loadFile(p string) (io.ReaderAt, int64, error) {
@@ -42,10 +45,10 @@ func TestNew(t *testing.T) {
 				return
 			}
 
-			// err = fstest.TestFS(fsys, tt.want[0])
-			// if err != nil {
-			// 	t.Fatal(err)
-			// }
+			err = fstest.TestFS(fsys, tt.want[0])
+			if err != nil {
+				t.Error(err)
+			}
 
 			var names []string
 			err = fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
@@ -53,17 +56,7 @@ func TestNew(t *testing.T) {
 					return nil
 				}
 				names = append(names, d.Name())
-				/*
-					dst, err := os.Create(strings.TrimPrefix(d.Name(), `aff4://`))
-					if err != nil {
-						return err
-					}
-					src, err := fsys.Open(path)
-					if err != nil {
-						return fmt.Errorf("x %w %s", err, path)
-					}
-					_, err = io.Copy(dst, src)
-				*/
+
 				return err
 			})
 			if err != nil {
@@ -74,6 +67,50 @@ func TestNew(t *testing.T) {
 				t.Errorf("New() got = %v, want %v", names, tt.want)
 			}
 
+		})
+	}
+}
+
+
+func TestUnpack(t *testing.T) {
+	tests := []struct {
+		name    string
+	}{
+		{"Base-Linear.aff4"},
+		{"Base-Linear-AllHashes.aff4"},
+		{"Base-Allocated.aff4"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r, s, err := loadFile("images/AFF4Std/" + tt.name)
+			if err != nil {
+				t.Fatal(err)
+			}
+			fsys, err := New(r, s)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			err = fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+				if path == "." {
+					return nil
+				}
+
+				dst, err := os.Create(strings.TrimPrefix(d.Name(), `aff4://`))
+				if err != nil {
+					return err
+				}
+				src, err := fsys.Open(path)
+				if err != nil {
+					return fmt.Errorf("x %w %s", err, path)
+				}
+				_, err = io.Copy(dst, src)
+
+				return err
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
 		})
 	}
 }
