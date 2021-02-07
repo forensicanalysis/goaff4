@@ -94,7 +94,7 @@ func (m *affMap) GetChunk() ([]byte, error) {
 	}
 
 	m.next = entry.MappedOffset + entry.Length
-	m.entryPos = m.entryPos + 1
+	m.entryPos++
 
 	return chunk, nil
 }
