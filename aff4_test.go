@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"log"
 	"os"
 	"reflect"
 	"strings"
@@ -46,30 +45,6 @@ func TestNew(t *testing.T) {
 				return
 			}
 
-			a, err := fs.ReadFile(fsys, tt.want[0])
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			f, err := fsys.Open(tt.want[0])
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			info, err := f.Stat()
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			log.Println(info.Size())
-			b, err := io.ReadAll(f)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if len(a) != len(b) {
-				t.Error("different length", len(a), len(b))
-			}
-
 			err = fstest.TestFS(fsys, tt.want[0])
 			if err != nil {
 				t.Error(err)
@@ -81,6 +56,45 @@ func TestNew(t *testing.T) {
 					return nil
 				}
 				names = append(names, d.Name())
+
+				return err
+			})
+			if err != nil {
+				t.Error(err)
+			}
+
+			if !reflect.DeepEqual(names, tt.want) {
+				t.Errorf("New() got = %v, want %v", names, tt.want)
+			}
+
+		})
+	}
+}
+
+
+func TestUnpack(t *testing.T) {
+	tests := []struct {
+		name    string
+	}{
+		{"Base-Linear.aff4"},
+		{"Base-Linear-AllHashes.aff4"},
+		{"Base-Allocated.aff4"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r, s, err := loadFile("images/AFF4Std/" + tt.name)
+			if err != nil {
+				t.Fatal(err)
+			}
+			fsys, err := New(r, s)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			err = fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+				if path == "." {
+					return nil
+				}
 
 				dst, err := os.Create(strings.TrimPrefix(d.Name(), `aff4://`))
 				if err != nil {
@@ -95,13 +109,8 @@ func TestNew(t *testing.T) {
 				return err
 			})
 			if err != nil {
-				t.Error(err)
+				t.Fatal(err)
 			}
-
-			if !reflect.DeepEqual(names, tt.want) {
-				t.Errorf("New() got = %v, want %v", names, tt.want)
-			}
-
 		})
 	}
 }
