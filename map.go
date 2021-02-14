@@ -76,8 +76,6 @@ func (m *affMap) GetChunk() ([]byte, error) {
 		chunk = bytes.Repeat(decoded[:1], int(entry.Length))
 	default:
 		if is, ok := m.dependentStreams[target]; ok {
-			fmt.Println(target, "all", entry.TargetOffset, entry.Length)
-
 			isChunk := make([]byte, entry.Length)
 			c, err := is.Read(isChunk)
 			if err != nil {
