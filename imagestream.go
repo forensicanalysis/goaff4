@@ -15,7 +15,7 @@ import (
 	"strings"
 )
 
-type ImageStream struct {
+type imageStream struct {
 	info *dirEntry
 
 	fsys fs.FS
@@ -31,13 +31,13 @@ type bevyIndexEntry struct {
 	ChunkSize  uint32
 }
 
-func newImageStream(zipfs *zip.Reader, objects map[string]parsedObject, parseImageURI string) (*ImageStream, error) {
+func newImageStream(zipfs *zip.Reader, objects map[string]parsedObject, parseImageURI string) (*imageStream, error) {
 	entries, err := newBevy(zipfs, parseImageURI)
 	if err != nil {
 		return nil, err
 	}
 
-	return &ImageStream{
+	return &imageStream{
 		info: &dirEntry{
 			uri:      parseImageURI,
 			metadata: objects[parseImageURI].metadata,
@@ -47,22 +47,22 @@ func newImageStream(zipfs *zip.Reader, objects map[string]parsedObject, parseIma
 	}, nil
 }
 
-func (s *ImageStream) Stat() (fs.FileInfo, error) {
+func (s *imageStream) Stat() (fs.FileInfo, error) {
 	return s.info, nil
 }
 
-func (s *ImageStream) Close() error {
+func (s *imageStream) Close() error {
 	return nil
 }
 
-func (s *ImageStream) Read(b []byte) (int, error) {
+func (s *imageStream) Read(b []byte) (int, error) {
 	if s.bcr == nil {
 		s.bcr = batch.New(s)
 	}
 	return s.bcr.Read(b)
 }
 
-func (s *ImageStream) GetChunk() ([]byte, error) {
+func (s *imageStream) GetChunk() ([]byte, error) {
 	bevyID := strings.Repeat("0", 8-len(fmt.Sprint(s.bevyNo))) + fmt.Sprint(s.bevyNo)
 
 	bevy, err := fs.ReadFile(s.fsys, path.Join(url.QueryEscape(s.info.uri), bevyID))
@@ -101,7 +101,7 @@ func (s *ImageStream) GetChunk() ([]byte, error) {
 	return chunk, nil
 }
 
-func (s *ImageStream) writeChunk(compressedChunk []byte) []byte {
+func (s *imageStream) writeChunk(compressedChunk []byte) []byte {
 	chunk, err := snappy.Decode(nil, compressedChunk)
 	if err != nil {
 		// TODO remove trial an error decode

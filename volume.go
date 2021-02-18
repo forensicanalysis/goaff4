@@ -36,7 +36,7 @@ func (v *volume) Open(name string) (fs.File, error) {
 		switch o.metadata["type"][0] {
 		case "Map":
 			return newMap(v.zipfs, v.objects, name)
-		case "ImageStream":
+		case "imageStream":
 			return newImageStream(v.zipfs, v.objects, name)
 		}
 		return nil, fmt.Errorf("unknown type %s", o.metadata["type"])
