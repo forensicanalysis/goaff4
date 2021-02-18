@@ -1,8 +1,11 @@
-# goaff4
+<h1 align="center">goaff4</h1>
 
-A Go module to read forensic disk images in the [Advanced Forensics File Format (AFF4)](http://www2.aff4.org/).
+<p  align="center">
+ <a href="https://codecov.io/gh/forensicanalysis/goaff4"><img src="https://codecov.io/gh/forensicanalysis/goaff4/branch/master/graph/badge.svg" alt="coverage" /></a>
+ <a href="https://godocs.io/github.com/forensicanalysis/goaff4"><img src="https://godocs.io/github.com/forensicanalysis/goaff4?status.svg" alt="doc" /></a>
+</p>
 
-This Go package works with [io/fs](https://tip.golang.org/pkg/io/fs) which is part of Go 1.16 (Release in February 2021).
+A Go module to read forensic disk images in the [Advanced Forensics File Format (AFF4)](http://www2.aff4.org/) as [io/fs.FS](https://golang.org/pkg/io/fs/#FS).
 
 ## Example
 
