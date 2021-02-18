@@ -16,7 +16,7 @@ import (
 	"github.com/golang/snappy"
 )
 
-type ImageStream struct {
+type imageStream struct {
 	fsys        fs.FS
 	urn         *url.URL
 	chunkSize   int64
@@ -29,7 +29,7 @@ type bevyIndexEntry struct {
 	ChunkSize  uint32
 }
 
-func newImageStream(fsys fs.FS, objects map[string]parsedObject, parseImageURI string) (*ImageStream, error) {
+func newImageStream(fsys fs.FS, objects map[string]parsedObject, parseImageURI string) (*imageStream, error) {
 	parseImageURL, err := url.Parse(parseImageURI)
 	if err != nil {
 		return nil, err
@@ -49,7 +49,7 @@ func newImageStream(fsys fs.FS, objects map[string]parsedObject, parseImageURI s
 		return nil, err
 	}
 
-	return &ImageStream{
+	return &imageStream{
 		fsys:        fsys,
 		urn:         parseImageURL,
 		chunkSize:   int64(chunkSize),
@@ -58,7 +58,7 @@ func newImageStream(fsys fs.FS, objects map[string]parsedObject, parseImageURI s
 	}, nil
 }
 
-func (s *ImageStream) Read(p []byte) (int, error) {
+func (s *imageStream) Read(p []byte) (int, error) {
 	b := &bytes.Buffer{}
 	_, err := s.WriteTo(b)
 	if err != nil {
@@ -69,15 +69,15 @@ func (s *ImageStream) Read(p []byte) (int, error) {
 	return copy(p, b.Bytes()[:x]), nil
 }
 
-func (s *ImageStream) Stat() (fs.FileInfo, error) {
+func (s *imageStream) Stat() (fs.FileInfo, error) {
 	return s, nil
 }
 
-func (s *ImageStream) Close() error {
+func (s *imageStream) Close() error {
 	return nil
 }
 
-func (s ImageStream) WriteTo(w io.Writer) (int64, error) {
+func (s imageStream) WriteTo(w io.Writer) (int64, error) {
 	bevyNo := 0
 	offset := 0
 	for {
@@ -177,34 +177,34 @@ func newBevyIndex(fsys fs.FS, parseImageURI string, name string) ([]bevyIndexEnt
 	return entries, nil
 }
 
-func (s *ImageStream) Name() string {
+func (s *imageStream) Name() string {
 	return strings.TrimPrefix(s.urn.String(), `aff4://`)
 }
 
-func (s *ImageStream) Size() int64 {
+func (s *imageStream) Size() int64 {
 	return s.size
 }
 
-func (s *ImageStream) Mode() fs.FileMode {
+func (s *imageStream) Mode() fs.FileMode {
 	return 0
 }
 
-func (s *ImageStream) ModTime() time.Time {
+func (s *imageStream) ModTime() time.Time {
 	return time.Time{}
 }
 
-func (s *ImageStream) IsDir() bool {
+func (s *imageStream) IsDir() bool {
 	return false
 }
 
-func (s *ImageStream) Sys() interface{} {
+func (s *imageStream) Sys() interface{} {
 	return nil
 }
 
-func (s *ImageStream) Type() fs.FileMode {
+func (s *imageStream) Type() fs.FileMode {
 	return 0
 }
 
-func (s *ImageStream) Info() (fs.FileInfo, error) {
+func (s *imageStream) Info() (fs.FileInfo, error) {
 	return s, nil
 }

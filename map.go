@@ -17,7 +17,7 @@ import (
 
 type affMap struct {
 	urn              *url.URL
-	dependentStreams map[string]*ImageStream
+	dependentStreams map[string]*imageStream
 	entries          []mapEntry
 	targets          []string
 	size             int64
@@ -128,7 +128,7 @@ func newMap(fsys fs.FS, objects map[string]parsedObject, mapURI string) (*affMap
 		return nil, err
 	}
 
-	imageStreams := map[string]*ImageStream{}
+	imageStreams := map[string]*imageStream{}
 	for _, dependentStreamURI := range objects[mapURI].metadata["dependentStream"] {
 		imageStream, err := newImageStream(fsys, objects, dependentStreamURI)
 		if err != nil {

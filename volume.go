@@ -54,7 +54,7 @@ func createItem(fsys fs.FS, objects map[string]parsedObject, c string) (superFil
 	switch o.metadata["type"][0] {
 	case "Map":
 		return newMap(fsys, objects, c)
-	case "ImageStream":
+	case "imageStream":
 		return newImageStream(fsys, objects, c)
 	}
 	return nil, fmt.Errorf("unknown type %s", o.metadata["type"])
