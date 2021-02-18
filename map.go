@@ -18,7 +18,7 @@ import (
 type affMap struct {
 	info *dirEntry
 
-	dependentStreams map[string]*ImageStream
+	dependentStreams map[string]*imageStream
 	entries          []mapEntry
 
 	targets  []string
@@ -108,7 +108,7 @@ func newMap(zipfs *zip.Reader, objects map[string]parsedObject, mapURI string) (
 		return nil, err
 	}
 
-	imageStreams := map[string]*ImageStream{}
+	imageStreams := map[string]*imageStream{}
 	for _, dependentStreamURI := range objects[mapURI].metadata["dependentStream"] {
 		imageStream, err := newImageStream(zipfs, objects, dependentStreamURI)
 		if err != nil {
