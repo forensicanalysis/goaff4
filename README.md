@@ -1,8 +1,7 @@
 <h1 align="center">goaff4</h1>
 
 <p  align="center">
- <a href="https://codecov.io/gh/forensicanalysis/goaff4"><img src="https://codecov.io/gh/forensicanalysis/goaff4/branch/master/graph/badge.svg" alt="coverage" /></a>
- <a href="https://godocs.io/github.com/forensicanalysis/goaff4"><img src="https://godocs.io/github.com/forensicanalysis/goaff4?status.svg" alt="doc" /></a>
+  <a href="https://godocs.io/github.com/forensicanalysis/goaff4"><img src="https://godocs.io/github.com/forensicanalysis/goaff4?status.svg" alt="doc" /></a>
 </p>
 
 Read forensic disk images in the [Advanced Forensics File Format (AFF4)](http://www2.aff4.org/) as [io/fs.FS](https://golang.org/pkg/io/fs/#FS).
