@@ -21,11 +21,11 @@ jobs:
           stable: false
           go-version: 1.16.0
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Download dependencies
         run: go mod download
       - name: Checkout reference images
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: aff4/ReferenceImages
           path: images
